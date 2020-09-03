@@ -1,0 +1,420 @@
+## LOAD DATA
+PC2 <- read.csv("~/Desktop/In Prep/Fox Paper/PC2.csv")
+g <- read.csv("~/Desktop/In Prep/Fox Paper/g.csv")
+Mainland <- PC2[which(PC2$species=='cinereoargenteus'),]
+Island <- PC2[which(PC2$species=='littoralis'),]
+## data imputation
+#seed missing values ( 10% )
+
+install.packages("missForest")
+library(missForest)
+
+#impute missing values, using all parameters as default values
+PC2.imp <- missForest(PC2)
+
+#check imputed values
+PC2.imp$ximp
+
+#check imputation error
+PC2.imp$OOBerror
+
+#comparing actual data accuracy
+View(PC2.imp$ximp)
+
+##selecting the best body mass estimation
+library(MASSTIMATE)
+g$Mass <- AHR1985(g$HC, g$FC, equation = "quad")
+HC <- g$HC
+FC <- g$FC
+g$MassMR <- MR(HC, FC, equation = c("phylocor"), data = g)
+
+
+## Carnivora equation from Christiansen 1999
+#LnY = LnX*b + Ln(a)
+#Humeral circumferance b = 0.3893; a= 13.924
+# femoral circumferance b = 0.3592; a = 14.928
+#Y=aX^b
+g$logHCMass <- (log(g$HC)-log(13.924))/0.3893
+g$logFCMass <- (log(g$FC)-log(14.928))/0.3592
+g$HCMass<-exp(g$logHCMass)
+g$FCMass<-exp(g$logFCMass)
+g$HCMassg <- g$HCMass*1000
+g$FCMassg <- g$FCMass*1000
+
+ppe(g$G, g$HCMassg, abs = TRUE)
+## 20.75 % using christiansen 1999 humeral circumference
+ppe(g$G, g$FCMassg, abs = TRUE)
+## 17.27 % using christiansen 1999 femoral circumference
+ppe(g$G, g$Mass, abs = TRUE)
+## 15.75 % using Anderson et al 1985 humerofemoral 
+ppe(g$G, g$MassMR$MR, abs = TRUE)
+## 12.78 % using Campione & Evans, 2012 phylogenetically-corrected formula on humera+femoral circumference
+
+## Estimate body mass using Campione & Evans, 2012 equation
+HC <- PC2$HC
+FC <- PC2$FC
+PC2$Mass <- MR(HC, FC, equation = c("phylocor"), data = PC2)
+
+# 1 ## t-tests were used to compare the absolute forelimb 
+##(humeral length + radial length) and hindlimb (femoral length + tibial length) 
+## in the two species. 
+Mainland <- PC2[which(PC2$species=='cinereoargenteus'),]
+Island <- PC2[which(PC2$species=='littoralis'),]
+
+t.test(x = PC2$FL[PC2$species == "littoralis"], PC2$FL[PC2$species == "cinereoargenteus"])
+## UL are significantly different ( p < 2.2e-16 ). t = -30.279; df = 50.455; mean of littoralis = 138.9259; 
+# mean of cinereoargenteus = 186.6167.
+
+#HML
+t.test(x = PC2$HML[PC2$species == "littoralis"], PC2$HML[PC2$species == "cinereoargenteus"])
+sd(littoralis$HML)
+sd(cinereoargenteus$HML)
+
+#RML
+t.test(x = PC2$RML[PC2$species == "littoralis"], PC2$RML[PC2$species == "cinereoargenteus"])
+sd(littoralis$RML)
+sd(cinereoargenteus$RML)
+
+#FML
+t.test(x = PC2$FML[PC2$species == "littoralis"], PC2$FML[PC2$species == "cinereoargenteus"])
+sd(littoralis$FML)
+sd(cinereoargenteus$FML)
+
+#TML
+t.test(x = PC2$TML[PC2$species == "littoralis"], PC2$TML[PC2$species == "cinereoargenteus"], ,var.equal = FALSE)
+sd(littoralis$TML)
+sd(cinereoargenteus$TML)
+
+#Mass
+t.test(x = PC2$Mass$MR[PC2$species == "littoralis"], PC2$Mass$MR[PC2$species == "cinereoargenteus"],var.equal = FALSE)
+sd(littoralis$Mass$MR)
+sd(cinereoargenteus$Mass$MR)
+
+# 2 ## Brachial (radial length / humeral length), 
+## crural (tibial length / femoral length), 
+## intramembral (humerus + radius / femur + tibia), 
+## and humerofemoral (humerus / femur) indices were then 
+## constructed to explore the relative shape of the limbs 
+## and if the elements contribute similarly to the overall size of the limbs. 
+## Brachial, crural, intramembral, and humerofemoral indices were compared 
+## between samples using t-tests. 
+
+#Brachial
+t.test(x = PC2$Brachial[PC2$species == "littoralis"], PC2$Brachial[PC2$species == "cinereoargenteus"],var.equal = FALSE)
+sd(Island$Brachial)
+sd(Mainland$Brachial)
+
+#Crural
+t.test(x = PC2$Crural[PC2$species == "littoralis"], PC2$Crural[PC2$species == "cinereoargenteus"],var.equal = FALSE)
+sd(Island$Crural)
+sd(Mainland$Crural)
+
+#IM
+t.test(x = PC2$IM[PC2$species == "littoralis"], PC2$IM[PC2$species == "cinereoargenteus"],var.equal = FALSE)
+sd(Island$IM)
+sd(Mainland$IM)
+
+#HF
+t.test(x = PC2$HF[PC2$species == "littoralis"], PC2$HF[PC2$species == "cinereoargenteus"], var.equal = FALSE)
+sd(Island$HF)
+sd(Mainland$HF)
+
+## 3 Assessing the static allometry 
+# using ANCOVA to test for differences in slope. 
+## assumptions behind ANCOVA = normality, homoscedasticity or Y for each 
+## value of X, and independence. 
+
+# is the data normally distributed?
+
+##Visual inspection
+install.packages("dplyr")
+library(dplyr)
+if(!require(devtools)) install.packages("devtools")
+install.packages("ggpubr")
+library(ggpubr)
+
+set.seed(1234)
+dplyr::sample_n(PC, 10)
+View(Mass)
+
+ggdensity(cinereoargenteus$HCFC, 
+          main = "Mainland FML",
+          xlab = "FML")
+
+ggqqplot(littoralis$HCFC)
+
+#Shapiro-Wilk test for normality
+shapiro.test(littoralis$HML)
+# p-value greater than 0.05 which indicates it is not significantly
+# different from normality
+
+##NORMALITY:
+#ISLAND HML: yes
+#ISLAND RML: yes
+#ISLAND FML: yes
+#ISLAND TML: yes
+#ISLAND Mass: yes
+
+#Mainland HML: yes
+#Mainland RML: yes
+#Mainland FML: yes
+#Mainland TML: yes
+#Mainland Mass: yes
+
+# is it homoscedastic? Homogeneity of regression slopes? (within group standard deviations are the same?)
+## using F-Test to test to test for common variances of log_10 transformed
+#data: 
+
+#Heteroscedasticity 
+lmMod <- lm(log10(TML) ~ MassMR$log.MR, data=cinereoargenteus) # initial model
+
+#Graphical method
+par(mfrow=c(2,2)) # init 4 charts in 1 panel
+plot(lmMod)
+
+#Statistical method
+# Breusch-Pagan test
+lmtest::bptest(lmMod)
+
+##Homoscedacity :
+#ISLAND HML: yes
+#ISLAND RML: yes
+#ISLAND FML: yes
+#ISLAND TML: yes
+
+#Mainland HML: yes
+#Mainland RML: yes
+#Mainland FML: yes
+#Mainland TML: yes
+
+
+## is it independent?
+
+#YES
+
+## Assumptions are met so now to test for similar slopes in ANCOVA
+
+slope1 <- aov(log10(HML)~Mass$log.MR*species, data=PC2)
+View(littoralis)
+View(PC2)
+
+slope1 <- lm(log10RML~ log10Mass , data=Mainland)
+summary(slope1)
+
+View(PC2)
+
+# two sample t-test to test differences in intercepts
+t.test
+
+
+#Mainland HML as a scaled down fox using mainland regression coefficients but island mass 
+#island mass = 1702.5
+
+predictedHML <- 90.81*1702.5^0.003
+
+## island fox =92.86 with mainland fox coefficients
+measuredHML<- 55.64*1702.5^0.011
+
+predictedRML <- 77.61*1702.5^0.0026
+measuredRML <- 47.353*1702.5^0.01
+
+lm(FML~Mass$MR,data=Island)
+predictedFML <- 101.1*1702.5^0.0024
+measuredFML<- 61.79*1702.5^0.012
+
+lm(TML~Mass$MR,data=Mainland)
+predictedTML<- 100.9*1702.5^0.00433
+measuredTML<- 62.58*1702.5^0.015
+
+PPEHML<- ((measuredHML-predictedHML)/predictedHML)*100
+PPERML<- ((measuredRML-predictedRML)/predictedRML)*100
+PPEFML<- ((measuredFML-predictedFML)/predictedFML)*100
+PPETML<- ((measuredTML-predictedTML)/predictedTML)*100
+mean(PPEHML,PPERML,PPEFML,PPETML)
+
+dens(Mainland$TML)
+
+##testing for sexual dimorphism
+#CV = SD / x¯ × 100%
+
+CVIMass<- (sd(Island$Mass$MR))/mean(Island$Mass$MR)*100
+## CV = 12.98 for island
+CVHMass<-(sd(Mainland$Mass$MR))/mean(Mainland$Mass$MR)*100
+## CV = 14.07 for mainland
+
+CVIMass<-(sd(Island$HML))/mean(Island$HML)*100
+## CV = 4.24 for island
+CVMMass<-(sd(Mainland$HML))/mean(Mainland$HML)*100
+## CV = 2.77 for mainland
+
+CVIMass<-(sd(Island$RML))/mean(Island$RML)*100
+## CV = 4.99 for island
+CVMMass<-(sd(Mainland$RML))/mean(Mainland$RML)*100
+## CV = 3.19 for mainland
+
+CVIMass<-(sd(Island$FML))/mean(Island$FML)*100
+## CV = 4.27 for island
+CVMMass<-(sd(Mainland$FML))/mean(Mainland$FML)*100
+## CV = 2.73 for mainland
+
+CVIMass<-(sd(Island$TML))/mean(Island$TML)*100
+## CV = 5.07 for island
+CVMMass<-(sd(Mainland$TML))/mean(Mainland$TML)*100
+## CV = 3.19 for mainland
+
+## from Plavcan (1994) assuming a parameter of CV within population to be 5.5%
+
+SexDim <- exp(0.0214* CVMMass- 0.047)
+SexDim
+# =1.26 for island mass
+# =1.29 for mainland mass
+
+
+# test for difference in CVs between island and mainland
+install.packages("cvequality")
+library(cvequality)
+asymptotic_test(PC2$Mass$MR, PC2$species)
+
+## Plots
+PC2$log10HML <- log10(PC2$HML)
+PC2$log10HCFC <- log10(PC2$HCFC)
+PC2$log10RML <- log10(PC2$RML)
+PC2$log10FML <- log10(PC2$FML)
+PC2$log10TML <- log10(PC2$TML)
+PC2$log10Mass <- log10(PC2$Mass$MR)
+View(PC2)
+
+h <- ggplot(PC2,aes(y = log10HML, x = log10Mass, color = sample, shape = sample))+
+  geom_point() + geom_smooth(method = "lm", se=TRUE, fullrange=TRUE)+
+  xlab(expression(bold(Log[10]~Predicted~Body~Mass~(g))))+
+  ylab(expression(bold(Log[10]~Humerus~Max~Length~(mm)))) + 
+  theme_bw()+
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))+
+  scale_color_manual(values=c("dodgerblue3", "darkorange1")) +  theme(axis.title=element_text(family = "Times", face = "bold", size = 12)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 11)) +
+  theme(legend.text = element_text(family = "Times", face = "bold", size = 13))+
+  theme(legend.title = element_blank()) + theme(legend.position="top")
+
+r <- RMLplot <- ggplot(PC2,aes(y = log10RML, x = log10Mass, colour = sample, shape = sample))+
+  geom_point() + geom_smooth(method = "lm", se=TRUE, fullrange=TRUE)+
+  xlab(expression(bold(Log[10]~Predicted~Body~Mass~(g))))+
+  ylab(expression(bold(Log[10]~Radius~Max~Length~(mm))))+ theme_bw()+
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))+
+  scale_color_manual(values=c("dodgerblue3", "darkorange1")) +  theme(axis.title=element_text(family = "Times", face = "bold", size = 12)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 11)) +
+  theme(legend.text = element_text(family = "Times", face = "bold", size = 13))+
+  theme(legend.title = element_blank()) + theme(legend.position="top")
+
+r
+f <- ggplot(PC2,aes(y = log10FML, x = log10Mass, colour = sample, shape = sample))+
+  geom_point() + geom_smooth(method = "lm", se=TRUE, fullrange=TRUE)+
+  xlab(expression(bold(Log[10]~Predicted~Body~Mass~(g))))+
+  ylab(expression(bold(Log[10]~Femur~Max~Length~(mm))))+ theme_bw()+
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))+
+  scale_color_manual(values=c("dodgerblue3", "darkorange1")) +  theme(axis.title=element_text(family = "Times", face = "bold", size = 12)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 11)) +
+  theme(legend.text = element_text(family = "Times", face = "bold", size = 13))+
+  theme(legend.title = element_blank()) + theme(legend.position="top")
+
+t <- ggplot(PC2,aes(y = log10TML, x = log10Mass, colour = sample,shape = sample))+
+  geom_point() + geom_smooth(method = "lm", se=TRUE, fullrange=TRUE)+
+  xlab(expression(bold(Log[10]~Predicted~Body~Mass~(g))))+
+  ylab(expression(bold(Log[10]~Tibia~Max~Length~(mm)))) + theme_bw()+
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "black"))+
+  scale_color_manual(values=c("dodgerblue3", "darkorange1")) +  theme(axis.title=element_text(family = "Times", face = "bold", size = 12)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 11)) +
+  theme(legend.position = "none")
+
+library(gridExtra)
+library(cowplot)
+ggarrange(h, r,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 1, legend = c("none"))
+ggsave("~/Desktop/In Prep/Fox Paper/Figure 4.jpeg", dpi=500, dev='jpeg', height=4, width=6, units="in")
+
+ggarrange(f, t, 
+          labels = c("C", "D"),
+          ncol = 2, nrow = 1, legend = c("none"))
+ggsave("~/Desktop/In Prep/Fox Paper/Figure 5.jpeg", dpi=500, dev='jpeg', height=4, width=6, units="in")
+
+## fixing the shape size
+#grid::grid.ls(grid::grid.force())
+#grid::grid.gedit("key-1-7-1.2-8-2-8", size = unit(3, "mm"))
+#grid::grid.gedit("key-1-3-1.2-4-2-4", size = unit(3, "mm"))
+#F5 <- grid::grid.grab()
+
+#boxplots
+library(extrafont)
+loadfonts(device = "win")
+
+par(mfrow=c(1,1))
+F3 <-ggplot(PC2)  +
+  geom_boxplot(aes(x="Brachial",y=Brachial, fill=sample)) + 
+  geom_boxplot(aes(x="Crural", y=Crural, fill=sample)) + 
+  geom_boxplot(aes(x="HF",y=HF, fill=sample)) + 
+  geom_boxplot(aes(x="IM", y=IM, fill=sample))+
+  scale_fill_manual(values=c("dodgerblue3", "darkorange1"))+
+  labs(x="Indices", y="Value") + theme_bw() + theme(axis.line = element_line(colour = "black"))
+
+F3 <- F3 + theme(axis.title=element_text(family = "Times", face = "bold", size = 14)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 13)) +
+  theme(legend.text = element_text(family = "Times", face = "bold", size = 13))+
+  theme(legend.title = element_blank())
+F3 + theme(legend.position="top")
+
+ggsave("~/Desktop/In Prep/Fox Paper/Figure 3.jpeg", dpi=500, dev='jpeg', height=4, width=6, units="in")
+
+install.packages("extrafont")
+library(extrafont)
+font_import()
+
+27+30-18
+
+fonts()
+jpeg("Figure3.jpeg", family = "Times New Roman", width= 4, height=4)
+
+
+PC2$names <- factor(PC2$species , levels=c("HML", "RML", "FML", "TML"))
+data <- data.frame(C = PC2$HML,D = PC2$RML, B = PC2$FML, 
+                   A = PC2$TML, species= PC2$species)
+
+Limbs <- data.frame(HML = PC2$HML,RML = PC2$RML, FML = PC2$FML, 
+                    TML = PC2$TML)
+Species <- data.frame(species = PC2$species)
+PC2$Limbs <- Limbs
+
+PC2$Humerus <- PC2$HML
+PC2$Radius <- PC2$RML
+PC2$Femur <- PC2$FML
+PC2$Tibia <- PC2$TML
+#color blind friendly palette
+library(RColorBrewer)
+par(mar=c(3,4,2,2))
+display.brewer.all()
+cbbPalette <- c("#009E73", "#F0E442")
+F2 <- ggplot(PC2) + 
+  geom_boxplot(aes(x="Humerus",y=Humerus, fill=species)) + 
+  geom_boxplot(aes(x="Radius", y=Radius, fill=species)) + 
+  geom_boxplot(aes(x="Femur",y=Femur, fill=species)) + 
+  geom_boxplot(aes(x="Tibia", y=Tibia, fill=species)) + scale_fill_manual(values=c("darkorange1", "dodgerblue3"))+
+  facet_wrap(~sample) +labs(x="Element", y="Length (mm)") + theme_bw(base_size=12) 
+
+F2 <- F2 + theme(axis.title=element_text(family = "Times", face = "bold", size = 14)) +
+  theme(axis.text = element_text(family = "Times", face="bold",size = 11)) +
+  theme(legend.position="none") +
+  theme(strip.text = element_text(family = "Times", face = "bold", size = 13))
+F2
+ggsave("~/Desktop/In Prep/Fox Paper/Figure 2.jpeg", dpi=500, dev='jpeg', height=4, width=6, units="in")
+
